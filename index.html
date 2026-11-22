@@ -67,12 +67,18 @@ async function loadAll(manual){
 function tab(t){T=t;['tests','new','res'].forEach(function(x){$('n-'+x).classList.toggle('on',x===t)});if(t!=='new')EDIT=-1;render()}
 function render(){$('main').innerHTML=({tests:vTests,new:vNew,res:vRes})[T]();if(T==='new')prev()}
 /* ---------- parse ---------- */
-function parseMcq(txt){var qs=[],cur=null;
-  String(txt||'').split(/\r?\n/).forEach(function(l){var m;if(!l.trim())return;
-    if((m=l.match(/^\s*(?:ans(?:wer)?)\s*[:\-=]\s*\(?([A-Da-d])/i))){if(cur)cur.a='ABCD'.indexOf(m[1].toUpperCase());return}
-    if((m=l.match(/^\s*\(?([A-Da-d])[.)]\s*(.*)/))&&cur){cur.o.push(m[2].trim());return}
-    if((m=l.match(/^\s*(?:Q\s*)?\d+\s*[.)]\s*(.*)/i))){cur={q:m[1].trim(),o:[],a:-1,m:1};qs.push(cur);return}
-    if(cur&&!cur.o.length)cur.q+='\n'+l.trim()});return qs}
+function parseMcq(txt){var qs=[],cur=null,L=String(txt||'').split(/\r?\n/);
+  for(var n=0;n<L.length;n++){var l=L[n],m;if(!l.trim())continue;
+    if((m=l.match(/^\s*(?:ans(?:wer)?)\s*[:\-=]?\s*\(?([A-Da-d])\b/i))){if(cur)cur.a='ABCD'.indexOf(m[1].toUpperCase());continue}
+    if(cur){
+      if((m=l.match(/^\s*\(?([A-Da-d])\s*[.):\-]\s*(.*)/))){cur.o.push(m[2].trim());continue}
+      if((m=l.match(/^\s*([A-D])\s+(.+)/))&&m[1]==='ABCD'[cur.o.length]){
+        var nx=n+1;while(nx<L.length&&!L[nx].trim())nx++;var nl=L[nx]||'',ne='ABCD'[cur.o.length+1];
+        if(cur.o.length>0||(ne&&new RegExp('^\\s*\\(?'+ne+'(\\s|[.):\\-])','i').test(nl))){cur.o.push(m[2].trim());continue}}
+    }
+    if((m=l.match(/^\s*(?:Q\s*)?\d+\s*[.)]\s*(.*)/i))){cur={q:m[1].trim(),o:[],a:-1,m:1};qs.push(cur);continue}
+    if(cur&&!cur.o.length)cur.q+='\n'+l.trim()}
+  return qs}
 function toText(t){return t.qs.map(function(q,i){return (i+1)+'. '+q.q+'\n'+q.o.map(function(o,j){return 'ABCD'[j]+') '+o}).join('\n')+'\nAns: '+'ABCD'[q.a]}).join('\n\n')}
 function prev(){var e=$('mq'),p=$('mqp');if(!e||!p)return;var qs=parseMcq(e.value),bad=qs.filter(function(q){return q.o.length<2||q.a<0}).length;p.textContent=qs.length+' questions'+(bad?' · ⚠️ '+bad+' missing options/answer':(qs.length?' ✓':''))}
 /* ---------- views ---------- */
