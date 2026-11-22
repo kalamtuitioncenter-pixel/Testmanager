@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#7c3aed"><title>KTC Test Manager</title>
+<style>
+:root{--pr:#7c3aed;--bg:#f1f5f9;--card:#fff;--tx:#0f172a;--tx2:#475569;--tx3:#94a3b8;--br:#e2e8f0;--ok:#16a34a;--bad:#dc2626;--warn:#ca8a04}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;animation:none!important;transition:none!important}
+html{touch-action:manipulation}body{margin:0;font-family:system-ui,-apple-system,'Segoe UI','Noto Sans Tamil',sans-serif;background:var(--bg);color:var(--tx);font-size:14px}
+.hide{display:none!important}
+header{background:var(--pr);color:#fff;padding:14px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:5}
+header b{font-size:16px;flex:1}header button{background:rgba(255,255,255,.2);color:#fff;border:0;border-radius:8px;padding:6px 10px;font-size:12px}
+nav{display:flex;background:#fff;border-bottom:1px solid var(--br);position:sticky;top:50px;z-index:4}
+nav button{flex:1;padding:12px 4px;border:0;background:none;font-size:13px;font-weight:600;color:var(--tx2);border-bottom:3px solid transparent}
+nav button.on{color:var(--pr);border-color:var(--pr)}
+main{padding:12px;max-width:760px;margin:0 auto}
+.card{background:var(--card);border:1px solid var(--br);border-radius:14px;padding:14px;margin-bottom:12px}
+.ct{font-weight:700;margin-bottom:10px;display:flex;justify-content:space-between;gap:8px}
+input,select,textarea{width:100%;padding:10px;border:1px solid var(--br);border-radius:10px;font:inherit;background:#fff;color:var(--tx);margin-bottom:8px}
+textarea{font-family:ui-monospace,Menlo,monospace;font-size:12px}
+.row2{display:flex;gap:8px}.row2>*{flex:1;min-width:0}
+.btn{border:0;border-radius:10px;background:var(--pr);color:#fff;font-weight:700;padding:11px 14px;font-size:13px;font-family:inherit}
+.btn.g{background:#e2e8f0;color:var(--tx)}.btn.r{background:var(--bad)}.btn.s{padding:7px 10px;font-size:12px}.btn.w{width:100%}
+.it{padding:10px 0;border-top:1px solid var(--br)}.it:first-child{border-top:0}
+.d{font-size:12px;color:var(--tx2)}.chip{font-size:10px;font-weight:700;padding:2px 8px;border-radius:9px;background:#ede9fe;color:var(--pr)}
+.chip.off{background:#fee2e2;color:var(--bad)}.chip.ok{background:#dcfce7;color:var(--ok)}
+table{width:100%;border-collapse:collapse;font-size:13px}td,th{padding:7px 6px;border-top:1px solid var(--br);text-align:left}th{font-size:11px;color:var(--tx3)}
+#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#0f172a;color:#fff;padding:10px 16px;border-radius:10px;font-size:13px;z-index:20;max-width:90%}
+#login{max-width:380px;margin:12vh auto;padding:0 16px}
+</style></head><body>
+<div id="login"><div class="card"><div style="text-align:center;font-size:40px">📝</div><h2 style="text-align:center;margin:4px 0 14px">KTC Test Manager</h2>
+<input id="l-em" type="email" placeholder="Admin email" autocomplete="username"><input id="l-pw" type="password" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+<button class="btn w" onclick="doLogin()">Login</button><div id="l-er" class="d" style="color:var(--bad);margin-top:8px"></div></div></div>
+<div id="app" class="hide"><header><b>📝 KTC Test Manager</b><button onclick="loadAll(true)">⟳ Refresh</button><button onclick="doLogout()">Logout</button></header>
+<nav><button id="n-tests" class="on" onclick="tab('tests')">Tests</button><button id="n-new" onclick="EDIT=-1;tab('new')">➕ New test</button><button id="n-res" onclick="tab('res')">Results</button></nav><main id="main"></main></div>
+<div id="toast" class="hide"></div>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js" onerror="window.__noFB=1"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js" onerror="window.__noFB=1"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js" onerror="window.__noFB=1"></script>
+<script>
+var FIREBASE_CONFIG={
+  apiKey:"AIzaSyAQS9sm1qoJNppQex4qKjRxMGlF84FTdXw",
+  authDomain:"kalam-tuition-center-test.firebaseapp.com",
+  projectId:"kalam-tuition-center-test",
+  storageBucket:"kalam-tuition-center-test.firebasestorage.app",
+  messagingSenderId:"107379425998",
+  appId:"1:107379425998:web:38c9a3783d7c1deff0069f"};
+var $=function(i){return document.getElementById(i)},esc=function(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})};
+var APP,auth,db,TESTS=[],CLASSES=[],RES={},T='tests',EDIT=-1;
+function toast(m){var t=$('toast');t.textContent=m;t.classList.remove('hide');clearTimeout(window.__t);window.__t=setTimeout(function(){t.classList.add('hide')},3500)}
+function init(){
+  if(!window.firebase){$('l-er').textContent='Firebase could not load. Check internet.';return}
+  APP=firebase.apps.find(function(a){return a.name==='tm'})||firebase.initializeApp(FIREBASE_CONFIG,'tm');auth=APP.auth();db=APP.firestore();
+  try{$('l-em').value=localStorage.getItem('tm_em')||''}catch(e){}
+  auth.onAuthStateChanged(function(u){if(u){$('login').classList.add('hide');$('app').classList.remove('hide');loadAll()}else{$('app').classList.add('hide');$('login').classList.remove('hide')}});
+}
+async function doLogin(){var em=$('l-em').value.trim(),pw=$('l-pw').value;$('l-er').textContent='';if(!auth){$('l-er').textContent='Firebase could not load here. Download this file and open it in Chrome (or host it on GitHub Pages) — it does not work inside the Claude preview.';return}if(!em||!pw){$('l-er').textContent='Enter email and password';return}
+  try{await auth.signInWithEmailAndPassword(em,pw);localStorage.setItem('tm_em',em);$('l-pw').value=''}catch(e){$('l-er').textContent='Login failed: '+(e.code||e.message)}}
+function doLogout(){auth.signOut()}
+async function loadAll(manual){
+  try{
+    var r=await Promise.all([db.collection('private').doc('tests').get(),db.collection('students').get()]);
+    TESTS=r[0].exists?(r[0].data().items||[]):[];
+    var g={};r[1].docs.forEach(function(d){var x=String(d.data().grade||'').trim();if(x)g[x]=1});CLASSES=Object.keys(g).sort(function(a,b){return a.localeCompare(b,undefined,{numeric:true})});
+    if(manual)toast('Refreshed');render()
+  }catch(e){toast('Could not load: '+(e.code||e.message));render()}
+}
+function tab(t){T=t;['tests','new','res'].forEach(function(x){$('n-'+x).classList.toggle('on',x===t)});if(t!=='new')EDIT=-1;render()}
+function render(){$('main').innerHTML=({tests:vTests,new:vNew,res:vRes})[T]();if(T==='new')prev()}
+/* ---------- parse ---------- */
+function parseMcq(txt){var qs=[],cur=null;
+  String(txt||'').split(/\r?\n/).forEach(function(l){var m;if(!l.trim())return;
+    if((m=l.match(/^\s*(?:ans(?:wer)?)\s*[:\-=]\s*\(?([A-Da-d])/i))){if(cur)cur.a='ABCD'.indexOf(m[1].toUpperCase());return}
+    if((m=l.match(/^\s*\(?([A-Da-d])[.)]\s*(.*)/))&&cur){cur.o.push(m[2].trim());return}
+    if((m=l.match(/^\s*(?:Q\s*)?\d+\s*[.)]\s*(.*)/i))){cur={q:m[1].trim(),o:[],a:-1,m:1};qs.push(cur);return}
+    if(cur&&!cur.o.length)cur.q+='\n'+l.trim()});return qs}
+function toText(t){return t.qs.map(function(q,i){return (i+1)+'. '+q.q+'\n'+q.o.map(function(o,j){return 'ABCD'[j]+') '+o}).join('\n')+'\nAns: '+'ABCD'[q.a]}).join('\n\n')}
+function prev(){var e=$('mq'),p=$('mqp');if(!e||!p)return;var qs=parseMcq(e.value),bad=qs.filter(function(q){return q.o.length<2||q.a<0}).length;p.textContent=qs.length+' questions'+(bad?' · ⚠️ '+bad+' missing options/answer':(qs.length?' ✓':''))}
+/* ---------- views ---------- */
+function vTests(){
+  return '<div class="card"><div class="ct">MCQ tests<span class="d">'+TESTS.length+'</span></div>'+(TESTS.length?TESTS.map(function(t,i){
+    return '<div class="it"><div style="display:flex;gap:8px;align-items:center"><div style="flex:1;min-width:0"><b>'+esc(t.title)+'</b> <span class="chip'+(t.published===false?' off':' ok')+'">'+(t.published===false?'Hidden':'Live')+'</span><div class="d">'+esc(t.subject||'')+' · '+(t.grade?'Class '+esc(t.grade):'All classes')+' · '+t.qs.length+' Qs · '+t.duration+' min'+(t.start?' · opens '+esc(t.start.replace('T',' ')):'')+'</div></div></div>'
+     +'<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"><button class="btn s g" onclick="edit('+i+')">✏️ Edit</button><button class="btn s g" onclick="tog('+i+')">'+(t.published===false?'Show':'Hide')+'</button><button class="btn s r" onclick="del('+i+')">🗑</button></div></div>'}).join(''):'<div class="d">No tests yet. Tap ➕ New test.</div>')+'</div>'
+   +'<div class="d" style="text-align:center">Changes go live for students immediately after you save.</div>';
+}
+function vNew(){
+  var t=EDIT>=0?TESTS[EDIT]:null,opts='<option value="">All classes</option>'+CLASSES.map(function(c){return '<option value="'+esc(c)+'"'+(t&&t.grade===c?' selected':'')+'>Class '+esc(c)+'</option>'}).join('');
+  return '<div class="card"><div class="ct">'+(t?'Edit test':'New MCQ test')+'</div><input id="mt" placeholder="Test title" value="'+esc(t?t.title:'')+'"><div class="row2"><input id="ms" placeholder="Subject" value="'+esc(t?t.subject:'')+'"><select id="mg">'+opts+'</select></div>'
+   +'<div class="row2"><input id="md" type="number" placeholder="Minutes" value="'+(t?t.duration:30)+'"><input id="mm" type="number" placeholder="Marks per Q" value="'+(t&&t.qs[0]?t.qs[0].m:1)+'"></div>'
+   +'<div class="row2"><label class="d">Opens<input id="mst" type="datetime-local" value="'+esc(t?t.start||'':'')+'"></label><label class="d">Closes<input id="men" type="datetime-local" value="'+esc(t?t.end||'':'')+'"></label></div>'
+   +'<textarea id="mq" rows="12" oninput="prev()" placeholder="1. Question text&#10;A) option&#10;B) option&#10;C) option&#10;D) option&#10;Ans: B&#10;&#10;2. Next question...">'+esc(t?toText(t):'')+'</textarea><div id="mqp" class="d" style="margin-bottom:10px"></div>'
+   +'<button class="btn w" onclick="saveTest()">'+(t?'💾 Save changes':'✅ Save &amp; publish')+'</button></div>';
+}
+function vRes(){
+  var h='<div class="card"><div class="ct">Results<button class="btn s" onclick="grade()">🧮 Collect &amp; grade</button></div><div class="d">1) Collect &amp; grade → check marks. 2) Approve → each student sees only their own result and the marks go to the admin app.</div></div>';
+  Object.keys(RES).forEach(function(tid){var t=TESTS.find(function(x){return x.id===tid});if(!t)return;var r=RES[tid],ks=Object.keys(r).sort(function(a,b){return r[b].score-r[a].score});
+    h+='<div class="card"><div class="ct"><span>'+esc(t.title)+' <span class="chip'+(t.approved?' ok':' off')+'">'+(t.approved?'Approved':'Pending')+'</span></span><span class="d">'+ks.length+' submitted</span></div><table><tr><th>#</th><th>Student</th><th>Marks</th></tr>'+ks.map(function(k,i){var x=r[k];return '<tr><td>'+(i+1)+'</td><td>'+esc(x.name||k)+(x.late?' ⏰ late':'')+(x.rank1?' 🏆':'')+'</td><td><b>'+x.score+'/'+x.total+'</b></td></tr>'}).join('')+'</table>'
+     +(t.approved?'<button class="btn s g" style="margin-top:8px" onclick="approve(\''+tid+'\')">↻ Re-send latest</button>':'<button class="btn w" style="margin-top:10px" onclick="approve(\''+tid+'\')">✅ Approve &amp; send</button>')+'</div>'});
+  return h;
+}
+/* ---------- actions ---------- */
+function edit(i){EDIT=i;tab('new');EDIT=i;render()}
+async function persist(){
+  var pub=TESTS.filter(function(t){return t.published!==false}).map(function(t){return {id:t.id,title:t.title,subject:t.subject,grade:t.grade,duration:t.duration,start:t.start||'',end:t.end||'',published:true,qs:t.qs.map(function(q){return {q:q.q,o:q.o,m:q.m}})}});
+  var b=db.batch();b.set(db.collection('private').doc('tests'),{items:TESTS});b.set(db.collection('center').doc('tests'),{items:pub});await b.commit()}
+async function saveTest(){
+  var t=$('mt').value.trim(),qs=parseMcq($('mq').value),m=parseFloat($('mm').value)||1;
+  if(!t||!qs.length){toast('Enter title and questions');return}
+  if(qs.some(function(q){return q.o.length<2||q.a<0})){toast('Some questions have no options or "Ans: B" line');return}
+  qs.forEach(function(q){q.m=m});
+  var o={id:EDIT>=0?TESTS[EDIT].id:'t'+Date.now(),title:t,subject:$('ms').value.trim(),grade:$('mg').value,duration:parseInt($('md').value)||30,start:$('mst').value,end:$('men').value,published:EDIT>=0?TESTS[EDIT].published!==false:true,qs:qs};
+  var old=TESTS.slice();if(EDIT>=0)TESTS[EDIT]=o;else TESTS.unshift(o);
+  try{await persist();toast('✅ Saved & live');EDIT=-1;tab('tests')}catch(e){TESTS=old;toast('Save failed: '+(e.code||e.message))}
+}
+async function tog(i){var old=TESTS[i].published;TESTS[i].published=old===false;try{await persist();render()}catch(e){TESTS[i].published=old;toast('Failed: '+(e.code||e.message))}}
+async function del(i){if(!confirm('Delete "'+TESTS[i].title+'"?'))return;var o=TESTS.splice(i,1);try{await persist();render()}catch(e){TESTS.splice(i,0,o[0]);toast('Failed: '+(e.code||e.message))}}
+async function grade(silent){
+  try{if(!silent)toast('Grading…');
+    var r=await Promise.all([db.collection('attempts').get(),db.collection('attemptStarts').get()]),S={},R={};
+    r[1].docs.forEach(function(d){S[d.id]=d.data()});
+    r[0].docs.forEach(function(d){var a=d.data(),t=TESTS.find(function(x){return x.id===a.testId});if(!t)return;
+      var sc=0,tot=0;t.qs.forEach(function(q,k){tot+=q.m;if(a.ans&&a.ans[k]===q.a)sc+=q.m});
+      var s=S[d.id],late=false;if(s&&s.at&&a.at&&a.at.toMillis)late=(a.at.toMillis()-s.at.toMillis())>(t.duration*60+90)*1000;
+      (R[a.testId]=R[a.testId]||{})[a.sid]={score:sc,total:tot,late:late,name:a.name}});
+    Object.keys(R).forEach(function(tid){var arr=Object.keys(R[tid]).map(function(k){return R[tid][k]}).filter(function(x){return !x.late}),top=arr.reduce(function(m,x){return Math.max(m,x.score)},-1),n=arr.filter(function(x){return x.score===top}).length;
+      Object.keys(R[tid]).forEach(function(k){var x=R[tid][k];x.rank1=!x.late&&x.score===top&&n===1&&arr.length>1;x.topShared=!x.late&&x.score===top&&n>1})});
+    RES=R;var n=await publishApproved();
+    if(!silent)toast('Graded. '+n+' student result(s) sent (approved tests only)');render()
+  }catch(e){toast('Grade failed: '+(e.code||e.message))}
+}
+/* only teacher-approved tests reach students and the admin app */
+async function publishApproved(){
+  var per={},b=db.batch(),feeds=0;
+  Object.keys(RES).forEach(function(tid){var t=TESTS.find(function(x){return x.id===tid});if(!t||!t.approved)return;
+    var sc={};Object.keys(RES[tid]).forEach(function(k){var x=RES[tid][k];if(x.late)return;sc[k]={name:x.name||k,score:x.score,total:x.total};
+      (per[k]=per[k]||[]).push({testId:tid,title:t.title,score:x.score,total:x.total,rank1:x.rank1,topShared:x.topShared})});
+    b.set(db.collection('adminFeed').doc(tid),{testId:tid,title:t.title,subject:t.subject||'',grade:t.grade||'',date:(t.start||'').slice(0,10)||new Date().toISOString().slice(0,10),total:Object.keys(sc).length?sc[Object.keys(sc)[0]].total:0,scores:sc,updated:Date.now()});feeds++});
+  var ids=Object.keys(per);ids.forEach(function(k){b.set(db.collection('results').doc(k),{sid:k,items:per[k],updated:Date.now()})});
+  if(ids.length||feeds)await b.commit();return ids.length}
+async function approve(tid){
+  var t=TESTS.find(function(x){return x.id===tid});if(!t)return;
+  if(!confirm('Approve "'+t.title+'"? Students will see their own marks and the admin app gets the marks.'))return;
+  t.approved=true;try{await persist();await grade(true);toast('✅ Approved & sent')}catch(e){t.approved=false;toast('Failed: '+(e.code||e.message))}
+}
+init();
+</script></body></html>
