@@ -76,7 +76,7 @@ function parseMcq(txt){var qs=[],cur=null,L=String(txt||'').split(/\r?\n/);
         var nx=n+1;while(nx<L.length&&!L[nx].trim())nx++;var nl=L[nx]||'',ne='ABCD'[cur.o.length+1];
         if(cur.o.length>0||(ne&&new RegExp('^\\s*\\(?'+ne+'(\\s|[.):\\-])','i').test(nl))){cur.o.push(m[2].trim());continue}}
     }
-    if((m=l.match(/^\s*(?:Q\s*)?\d+\s*[.)]\s*(.*)/i))){cur={q:m[1].trim(),o:[],a:-1,m:1};qs.push(cur);continue}
+    if((m=l.match(/^\s*(?:Q\s*)?\d+\s*[.),:]\s*(.*)/i))){cur={q:m[1].trim(),o:[],a:-1,m:1};qs.push(cur);continue}
     if(cur&&!cur.o.length)cur.q+='\n'+l.trim()}
   return qs}
 function toText(t){return t.qs.map(function(q,i){return (i+1)+'. '+q.q+'\n'+q.o.map(function(o,j){return 'ABCD'[j]+') '+o}).join('\n')+'\nAns: '+'ABCD'[q.a]}).join('\n\n')}
