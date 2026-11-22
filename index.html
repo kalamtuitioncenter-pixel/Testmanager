@@ -4,22 +4,28 @@
 <meta name="theme-color" content="#7c3aed"><title>KTC Test Manager</title>
 <style>
 :root{--pr:#7c3aed;--bg:#f1f5f9;--card:#fff;--tx:#0f172a;--tx2:#475569;--tx3:#94a3b8;--br:#e2e8f0;--ok:#16a34a;--bad:#dc2626;--warn:#ca8a04}
+html.dark{--bg:#0b1220;--card:#131c2e;--tx:#e8eefb;--tx2:#a8b5cc;--tx3:#94a3b8;--br:#223049}
+html.glass body{background:linear-gradient(135deg,#c7d7fe,#a5d8ff 55%,#d0bfff) fixed}
+html.glass.dark body{background:linear-gradient(135deg,#1e1b4b,#0f2a4a 60%,#134e4a) fixed}
+html.glass{--card:rgba(255,255,255,.6);--br:rgba(255,255,255,.75)}
+html.glass.dark{--card:rgba(30,41,59,.6);--br:rgba(255,255,255,.14)}
+html.glass .card,html.glass nav,html.glass header{-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;animation:none!important;transition:none!important}
 html{touch-action:manipulation}body{margin:0;font-family:system-ui,-apple-system,'Segoe UI','Noto Sans Tamil',sans-serif;background:var(--bg);color:var(--tx);font-size:14px}
 .hide{display:none!important}
 header{background:var(--pr);color:#fff;padding:14px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:5}
 header b{font-size:16px;flex:1}header button{background:rgba(255,255,255,.2);color:#fff;border:0;border-radius:8px;padding:6px 10px;font-size:12px}
-nav{display:flex;background:#fff;border-bottom:1px solid var(--br);position:sticky;top:50px;z-index:4}
+nav{display:flex;background:var(--card);border-bottom:1px solid var(--br);position:sticky;top:50px;z-index:4}
 nav button{flex:1;padding:12px 4px;border:0;background:none;font-size:13px;font-weight:600;color:var(--tx2);border-bottom:3px solid transparent}
 nav button.on{color:var(--pr);border-color:var(--pr)}
 main{padding:12px;max-width:760px;margin:0 auto}
 .card{background:var(--card);border:1px solid var(--br);border-radius:14px;padding:14px;margin-bottom:12px}
 .ct{font-weight:700;margin-bottom:10px;display:flex;justify-content:space-between;gap:8px}
-input,select,textarea{width:100%;padding:10px;border:1px solid var(--br);border-radius:10px;font:inherit;background:#fff;color:var(--tx);margin-bottom:8px}
+input,select,textarea{width:100%;padding:10px;border:1px solid var(--br);border-radius:10px;font:inherit;background:var(--card);color:var(--tx);margin-bottom:8px}
 textarea{font-family:ui-monospace,Menlo,monospace;font-size:12px}
 .row2{display:flex;gap:8px}.row2>*{flex:1;min-width:0}
 .btn{border:0;border-radius:10px;background:var(--pr);color:#fff;font-weight:700;padding:11px 14px;font-size:13px;font-family:inherit}
-.btn.g{background:#e2e8f0;color:var(--tx)}.btn.r{background:var(--bad)}.btn.s{padding:7px 10px;font-size:12px}.btn.w{width:100%}
+.btn.g{background:var(--br);color:var(--tx)}.btn.r{background:var(--bad)}.btn.s{padding:7px 10px;font-size:12px}.btn.w{width:100%}
 .it{padding:10px 0;border-top:1px solid var(--br)}.it:first-child{border-top:0}
 .d{font-size:12px;color:var(--tx2)}.chip{font-size:10px;font-weight:700;padding:2px 8px;border-radius:9px;background:#ede9fe;color:var(--pr)}
 .chip.off{background:#fee2e2;color:var(--bad)}.chip.ok{background:#dcfce7;color:var(--ok)}
@@ -31,7 +37,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}td,th{padding:7px 6px;b
 <input id="l-em" type="email" placeholder="Admin email" autocomplete="username"><input id="l-pw" type="password" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
 <button class="btn w" onclick="doLogin()">Login</button><div id="l-er" class="d" style="color:var(--bad);margin-top:8px"></div></div></div>
 <div id="app" class="hide"><header><b>📝 KTC Test Manager</b><button onclick="loadAll(true)">⟳ Refresh</button><button onclick="doLogout()">Logout</button></header>
-<nav><button id="n-tests" class="on" onclick="tab('tests')">Tests</button><button id="n-new" onclick="EDIT=-1;tab('new')">➕ New test</button><button id="n-res" onclick="tab('res')">Results</button></nav><main id="main"></main></div>
+<nav><button id="n-tests" class="on" onclick="tab('tests')">Tests</button><button id="n-new" onclick="EDIT=-1;tab('new')">➕ New test</button><button id="n-res" onclick="tab('res')">Results</button><button id="n-set" onclick="tab('set')">⚙️</button></nav><main id="main"></main></div>
 <div id="toast" class="hide"></div>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js" onerror="window.__noFB=1"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js" onerror="window.__noFB=1"></script>
@@ -45,6 +51,17 @@ var FIREBASE_CONFIG={
   messagingSenderId:"107379425998",
   appId:"1:107379425998:web:38c9a3783d7c1deff0069f"};
 var $=function(i){return document.getElementById(i)},esc=function(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})};
+function _theme(){try{return JSON.parse(localStorage.getItem('tm_theme')||'{}')}catch(e){return {}}}
+function applyTheme(){var t=_theme(),d=t.mode==='dark'||((!t.mode||t.mode==='auto')&&window.matchMedia&&matchMedia('(prefers-color-scheme:dark)').matches),h=document.documentElement;h.classList.toggle('dark',!!d);h.classList.toggle('glass',!!t.glass)}
+function setTheme(k,v){var t=_theme();t[k]=v;try{localStorage.setItem('tm_theme',JSON.stringify(t))}catch(e){}applyTheme();if(T==='set')render()}
+function _def(){try{return JSON.parse(localStorage.getItem('tm_def')||'{}')}catch(e){return {}}}
+function setDef(k,v){var d=_def();d[k]=v;try{localStorage.setItem('tm_def',JSON.stringify(d))}catch(e){}}
+applyTheme();
+function vSet(){var t=_theme(),cur=t.mode||'auto',d=_def();
+  return '<div class="card"><div class="ct">🎨 Appearance</div><div class="row2" style="margin-bottom:8px">'+[['light','☀️ Light'],['dark','🌙 Night'],['auto','Auto']].map(function(m){return '<button class="btn s'+(cur===m[0]?'':' g')+'" onclick="setTheme(\'mode\',\''+m[0]+'\')">'+m[1]+'</button>'}).join('')+'</div><button class="btn s w'+(t.glass?'':' g')+'" onclick="setTheme(\'glass\',!_theme().glass)">✨ Glass theme: '+(t.glass?'On':'Off')+'</button></div>'
+   +'<div class="card"><div class="ct">Defaults for new tests</div><div class="row2"><label class="d">Minutes<input type="number" value="'+esc(d.min||30)+'" onchange="setDef(\'min\',this.value)"></label><label class="d">Marks per question<input type="number" value="'+esc(d.mark||1)+'" onchange="setDef(\'mark\',this.value)"></label></div><label class="d">Default subject<input value="'+esc(d.sub||'')+'" onchange="setDef(\'sub\',this.value)"></label></div>'
+   +'<div class="card"><div class="ct">🤖 Gemini (PDF → questions)</div><div class="d" style="margin-bottom:8px">Get a free key at aistudio.google.com → Get API key. It is saved only in this browser, never uploaded.</div><input type="password" placeholder="Paste Gemini API key" value="'+esc(localStorage.getItem('tm_gkey')||'')+'" onchange="localStorage.setItem(\'tm_gkey\',this.value.trim())"><input placeholder="Model" value="'+esc(localStorage.getItem('tm_gmodel')||'gemini-2.5-flash')+'" onchange="localStorage.setItem(\'tm_gmodel\',this.value.trim()||\'gemini-2.5-flash\')"></div>'
+   +'<div class="card"><div class="ct">Account</div><div class="d" style="margin-bottom:8px">'+esc(auth&&auth.currentUser?auth.currentUser.email:'')+'</div><button class="btn r w" onclick="doLogout()">Logout</button></div>'}
 var APP,auth,db,TESTS=[],CLASSES=[],RES={},T='tests',EDIT=-1;
 function toast(m){var t=$('toast');t.textContent=m;t.classList.remove('hide');clearTimeout(window.__t);window.__t=setTimeout(function(){t.classList.add('hide')},3500)}
 function init(){
@@ -64,8 +81,8 @@ async function loadAll(manual){
     if(manual)toast('Refreshed');render()
   }catch(e){toast('Could not load: '+(e.code||e.message));render()}
 }
-function tab(t){T=t;['tests','new','res'].forEach(function(x){$('n-'+x).classList.toggle('on',x===t)});if(t!=='new')EDIT=-1;render()}
-function render(){$('main').innerHTML=({tests:vTests,new:vNew,res:vRes})[T]();if(T==='new')prev()}
+function tab(t){T=t;['tests','new','res','set'].forEach(function(x){$('n-'+x).classList.toggle('on',x===t)});if(t!=='new')EDIT=-1;render()}
+function render(){$('main').innerHTML=({tests:vTests,new:vNew,res:vRes,set:vSet})[T]();if(T==='new')prev()}
 /* ---------- parse ---------- */
 function parseMcq(txt){var qs=[],cur=null,L=String(txt||'').split(/\r?\n/);
   for(var n=0;n<L.length;n++){var l=L[n],m;if(!l.trim())continue;
@@ -90,8 +107,9 @@ function vTests(){
 }
 function vNew(){
   var t=EDIT>=0?TESTS[EDIT]:null,opts='<option value="">All classes</option>'+CLASSES.map(function(c){return '<option value="'+esc(c)+'"'+(t&&t.grade===c?' selected':'')+'>Class '+esc(c)+'</option>'}).join('');
-  return '<div class="card"><div class="ct">'+(t?'Edit test':'New MCQ test')+'</div><input id="mt" placeholder="Test title" value="'+esc(t?t.title:'')+'"><div class="row2"><input id="ms" placeholder="Subject" value="'+esc(t?t.subject:'')+'"><select id="mg">'+opts+'</select></div>'
-   +'<div class="row2"><input id="md" type="number" placeholder="Minutes" value="'+(t?t.duration:30)+'"><input id="mm" type="number" placeholder="Marks per Q" value="'+(t&&t.qs[0]?t.qs[0].m:1)+'"></div>'
+  var gen=t?'':'<div class="card"><div class="ct">📄 Make questions from a PDF / photo</div><input type="file" id="gf" accept="application/pdf,image/*"><div class="row2"><label class="d">How many questions<input id="gn" type="number" value="10" min="1" max="50"></label><label class="d">Language<select id="gl"><option value="same as the document">Same as document</option><option>Tamil</option><option>English</option></select></label></div><button class="btn w" id="gb" onclick="genQ()">✨ Generate questions</button><div id="gs" class="d" style="margin-top:6px"></div></div>';
+  return gen+'<div class="card"><div class="ct">'+(t?'Edit test':'New MCQ test')+'</div><input id="mt" placeholder="Test title" value="'+esc(t?t.title:'')+'"><div class="row2"><input id="ms" placeholder="Subject" value="'+esc(t?t.subject:(_def().sub||''))+'"><select id="mg">'+opts+'</select></div>'
+   +'<div class="row2"><input id="md" type="number" placeholder="Minutes" value="'+(t?t.duration:(_def().min||30))+'"><input id="mm" type="number" placeholder="Marks per Q" value="'+(t&&t.qs[0]?t.qs[0].m:(_def().mark||1))+'"></div>'
    +'<div class="row2"><label class="d">Opens<input id="mst" type="datetime-local" value="'+esc(t?t.start||'':'')+'"></label><label class="d">Closes<input id="men" type="datetime-local" value="'+esc(t?t.end||'':'')+'"></label></div>'
    +'<textarea id="mq" rows="12" oninput="prev()" placeholder="1. Question text&#10;A) option&#10;B) option&#10;C) option&#10;D) option&#10;Ans: B&#10;&#10;2. Next question...">'+esc(t?toText(t):'')+'</textarea><div id="mqp" class="d" style="margin-bottom:10px"></div>'
    +'<button class="btn w" onclick="saveTest()">'+(t?'💾 Save changes':'✅ Save &amp; publish')+'</button></div>';
@@ -102,6 +120,31 @@ function vRes(){
     h+='<div class="card"><div class="ct"><span>'+esc(t.title)+' <span class="chip'+(t.approved?' ok':' off')+'">'+(t.approved?'Approved':'Pending')+'</span></span><span class="d">'+ks.length+' submitted</span></div><table><tr><th>#</th><th>Student</th><th>Marks</th></tr>'+ks.map(function(k,i){var x=r[k];return '<tr><td>'+(i+1)+'</td><td>'+esc(x.name||k)+(x.late?' ⏰ late':'')+(x.rank1?' 🏆':'')+'</td><td><b>'+x.score+'/'+x.total+'</b></td></tr>'}).join('')+'</table>'
      +(t.approved?'<button class="btn s g" style="margin-top:8px" onclick="approve(\''+tid+'\')">↻ Re-send latest</button>':'<button class="btn w" style="margin-top:10px" onclick="approve(\''+tid+'\')">✅ Approve &amp; send</button>')+'</div>'});
   return h;
+}
+/* ---------- Gemini: PDF/photo -> MCQs ---------- */
+function _b64(f){return new Promise(function(res,rej){var r=new FileReader();r.onload=function(){res(String(r.result).split(',')[1])};r.onerror=function(){rej('Could not read file')};r.readAsDataURL(f)})}
+async function genQ(){
+  var key=localStorage.getItem('tm_gkey'),f=$('gf').files[0],st=$('gs'),btn=$('gb');
+  if(!key){st.textContent='Add your Gemini key first: ⚙️ Settings';return}
+  if(!f){st.textContent='Choose a PDF or photo first';return}
+  if(f.size>15*1024*1024){st.textContent='File is too big (max 15 MB). Use fewer pages.';return}
+  var n=Math.max(1,Math.min(50,parseInt($('gn').value)||10)),lang=$('gl').value,model=localStorage.getItem('tm_gmodel')||'gemini-2.5-flash';
+  btn.disabled=true;st.textContent='Reading the document… this can take up to a minute';
+  try{
+    var data=await _b64(f),mime=f.type||'application/pdf';
+    var prompt='You are a school teacher. Using ONLY the content of the attached document, write '+n+' multiple-choice questions for students. Rules: each question has exactly 4 options and exactly one correct option; do not invent facts that are not in the document; questions must be clear and not ambiguous; language: '+lang+'. Return ONLY a JSON array like [{"q":"question","o":["opt1","opt2","opt3","opt4"],"a":0}] where a is the 0-based index of the correct option.';
+    var res=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(model)+':generateContent?key='+encodeURIComponent(key),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{inline_data:{mime_type:mime,data:data}},{text:prompt}]}],generationConfig:{responseMimeType:'application/json',temperature:0.3}})});
+    var j=await res.json();
+    if(!res.ok){throw (j.error&&j.error.message)||('Error '+res.status)}
+    var txt=(((j.candidates||[])[0]||{}).content||{}).parts;txt=txt&&txt.map(function(x){return x.text||''}).join('');
+    if(!txt)throw 'No questions came back. Try a smaller part of the document.';
+    var arr=JSON.parse(String(txt).replace(/^```json|```$/g,'').trim());
+    arr=(arr||[]).filter(function(q){return q&&q.q&&Array.isArray(q.o)&&q.o.length>=2&&q.a>=0&&q.a<q.o.length}).slice(0,4*n);
+    if(!arr.length)throw 'Could not read the questions. Try again.';
+    $('mq').value=toText({qs:arr.map(function(q){return {q:String(q.q),o:q.o.slice(0,4).map(String),a:q.a}})});prev();
+    st.textContent='✅ '+arr.length+' questions added below. Please check every answer before saving — AI can make mistakes.';$('mq').scrollIntoView();
+  }catch(e){st.textContent='⚠️ '+(e&&e.message?e.message:e)}
+  btn.disabled=false;
 }
 /* ---------- actions ---------- */
 function edit(i){EDIT=i;tab('new');EDIT=i;render()}
