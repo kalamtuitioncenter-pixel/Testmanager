@@ -60,7 +60,7 @@ applyTheme();
 function vSet(){var t=_theme(),cur=t.mode||'auto',d=_def();
   return '<div class="card"><div class="ct">🎨 Appearance</div><div class="row2" style="margin-bottom:8px">'+[['light','☀️ Light'],['dark','🌙 Night'],['auto','Auto']].map(function(m){return '<button class="btn s'+(cur===m[0]?'':' g')+'" onclick="setTheme(\'mode\',\''+m[0]+'\')">'+m[1]+'</button>'}).join('')+'</div><button class="btn s w'+(t.glass?'':' g')+'" onclick="setTheme(\'glass\',!_theme().glass)">✨ Glass theme: '+(t.glass?'On':'Off')+'</button></div>'
    +'<div class="card"><div class="ct">Defaults for new tests</div><div class="row2"><label class="d">Minutes<input type="number" value="'+esc(d.min||30)+'" onchange="setDef(\'min\',this.value)"></label><label class="d">Marks per question<input type="number" value="'+esc(d.mark||1)+'" onchange="setDef(\'mark\',this.value)"></label></div><label class="d">Default subject<input value="'+esc(d.sub||'')+'" onchange="setDef(\'sub\',this.value)"></label></div>'
-   +'<div class="card"><div class="ct">🤖 Gemini (PDF → questions)</div><div class="d" style="margin-bottom:8px">Get a free key at aistudio.google.com → Get API key. It is saved only in this browser, never uploaded.</div><input type="password" placeholder="Paste Gemini API key" value="'+esc(localStorage.getItem('tm_gkey')||'')+'" onchange="localStorage.setItem(\'tm_gkey\',this.value.trim())"><input placeholder="Model" value="'+esc(localStorage.getItem('tm_gmodel')||'gemini-2.5-flash')+'" onchange="localStorage.setItem(\'tm_gmodel\',this.value.trim()||\'gemini-2.5-flash\')"></div>'
+   +'<div class="card"><div class="ct">🤖 Gemini (PDF → questions)</div><div class="d" style="margin-bottom:8px">Get a free key at aistudio.google.com → Get API key. It is saved only in this browser, never uploaded.</div><input type="password" placeholder="Paste Gemini API key" value="'+esc(localStorage.getItem('tm_gkey')||'')+'" onchange="localStorage.setItem(\'tm_gkey\',this.value.trim())"><input placeholder="Model" value="'+esc(localStorage.getItem('tm_gmodel')||'gemini-3.8-flash')+'" onchange="localStorage.setItem(\'tm_gmodel\',this.value.trim()||\'gemini-3.8-flash\')"></div>'
    +'<div class="card"><div class="ct">Account</div><div class="d" style="margin-bottom:8px">'+esc(auth&&auth.currentUser?auth.currentUser.email:'')+'</div><button class="btn r w" onclick="doLogout()">Logout</button></div>'}
 var APP,auth,db,TESTS=[],CLASSES=[],RES={},T='tests',EDIT=-1;
 function toast(m){var t=$('toast');t.textContent=m;t.classList.remove('hide');clearTimeout(window.__t);window.__t=setTimeout(function(){t.classList.add('hide')},3500)}
@@ -123,12 +123,12 @@ function vRes(){
 }
 /* ---------- Gemini: PDF/photo -> MCQs ---------- */
 function _b64(f){return new Promise(function(res,rej){var r=new FileReader();r.onload=function(){res(String(r.result).split(',')[1])};r.onerror=function(){rej('Could not read file')};r.readAsDataURL(f)})}
-async function genQ(){
+async function genQ(retried){
   var key=localStorage.getItem('tm_gkey'),f=$('gf').files[0],st=$('gs'),btn=$('gb');
   if(!key){st.textContent='Add your Gemini key first: ⚙️ Settings';return}
   if(!f){st.textContent='Choose a PDF or photo first';return}
   if(f.size>15*1024*1024){st.textContent='File is too big (max 15 MB). Use fewer pages.';return}
-  var n=Math.max(1,Math.min(50,parseInt($('gn').value)||10)),lang=$('gl').value,model=localStorage.getItem('tm_gmodel')||'gemini-2.5-flash';
+  var n=Math.max(1,Math.min(50,parseInt($('gn').value)||10)),lang=$('gl').value,model=localStorage.getItem('tm_gmodel')||'gemini-3.8-flash';
   btn.disabled=true;st.textContent='Reading the document… this can take up to a minute';
   try{
     var data=await _b64(f),mime=f.type||'application/pdf';
@@ -143,7 +143,9 @@ async function genQ(){
     if(!arr.length)throw 'Could not read the questions. Try again.';
     $('mq').value=toText({qs:arr.map(function(q){return {q:String(q.q),o:q.o.slice(0,4).map(String),a:q.a}})});prev();
     st.textContent='✅ '+arr.length+' questions added below. Please check every answer before saving — AI can make mistakes.';$('mq').scrollIntoView();
-  }catch(e){st.textContent='⚠️ '+(e&&e.message?e.message:e)}
+  }catch(e){var msg=String(e&&e.message?e.message:e),nm=msg.match(/use\s+(?:models\/)?(gemini[\w.\-]+)/i);
+    if(nm&&!retried&&nm[1]!==model){localStorage.setItem('tm_gmodel',nm[1]);st.textContent='Switching to model '+nm[1]+'…';btn.disabled=false;return genQ(true)}
+    st.textContent='⚠️ '+msg}
   btn.disabled=false;
 }
 /* ---------- actions ---------- */
