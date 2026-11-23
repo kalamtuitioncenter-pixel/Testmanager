@@ -133,9 +133,17 @@ async function genQ(retried){
   try{
     var data=await _b64(f),mime=f.type||'application/pdf';
     var prompt='You are a school teacher. Using ONLY the content of the attached document, write '+n+' multiple-choice questions for students. Rules: each question has exactly 4 options and exactly one correct option; do not invent facts that are not in the document; questions must be clear and not ambiguous; language: '+lang+'. Return ONLY a JSON array like [{"q":"question","o":["opt1","opt2","opt3","opt4"],"a":0}] where a is the 0-based index of the correct option.';
-    var res=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(model)+':generateContent?key='+encodeURIComponent(key),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{inline_data:{mime_type:mime,data:data}},{text:prompt}]}],generationConfig:{responseMimeType:'application/json',temperature:0.3}})});
-    var j=await res.json();
-    if(!res.ok){throw (j.error&&j.error.message)||('Error '+res.status)}
+    var res,j,waits=[6,12,20,30];
+    for(var tr=0;tr<=waits.length;tr++){
+      res=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(model)+':generateContent?key='+encodeURIComponent(key),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{inline_data:{mime_type:mime,data:data}},{text:prompt}]}],generationConfig:{responseMimeType:'application/json',temperature:0.3}})});
+      j=await res.json().catch(function(){return {}});
+      if(res.ok)break;
+      var em=(j.error&&j.error.message)||'';
+      if((res.status===503||res.status===429||/high demand|overloaded|try again/i.test(em))&&tr<waits.length){
+        for(var w=waits[tr];w>0;w--){st.textContent='Google is busy. Trying again in '+w+'s… ('+(tr+1)+'/'+waits.length+')';await new Promise(function(r){setTimeout(r,1000)})}
+        st.textContent='Trying again…';continue}
+      throw em||('Error '+res.status)}
+    if(!res.ok)throw (j.error&&j.error.message)||('Error '+res.status);
     var txt=(((j.candidates||[])[0]||{}).content||{}).parts;txt=txt&&txt.map(function(x){return x.text||''}).join('');
     if(!txt)throw 'No questions came back. Try a smaller part of the document.';
     var arr=JSON.parse(String(txt).replace(/^```json|```$/g,'').trim());
